@@ -1,0 +1,47 @@
+const text = $input.first().json.text;
+const lower = text.toLowerCase();
+
+const categorias = [
+  { nombre: 'Tarjeta AMEX',       keywords: ['amex', 'american express'] },
+  { nombre: 'Tarjeta VISA',       keywords: ['visa'] },
+  { nombre: 'Tarjeta Mastercard', keywords: ['mastercard', 'master'] },
+  { nombre: 'Efectivo',           keywords: ['efectivo', 'cash'] },
+  { nombre: 'Transferencia',      keywords: ['transferencia', 'spei'] },
+  { nombre: 'Debito',             keywords: ['debito'] },
+  { nombre: 'Comida',             keywords: ['comida', 'restaurante', 'food', 'cena', 'desayuno', 'lunch'] },
+  { nombre: 'Transporte',         keywords: ['uber', 'didi', 'taxi', 'metro', 'gasolina'] },
+  { nombre: 'Supermercado',       keywords: ['super', 'walmart', 'soriana', 'chedraui', 'mercado'] },
+  { nombre: 'Entretenimiento',    keywords: ['netflix', 'spotify', 'cine', 'entretenimiento'] },
+  { nombre: 'Gasto General',      keywords: ['general', 'varios', 'otro'] }
+];
+
+const montoMatch = text.match(/(\d[\d,\.]*)/g);
+const monto = montoMatch ? parseFloat(montoMatch[0].replace(',', '')) : 0;
+
+let categoria = 'Gasto General';
+for (var i = 0; i < categorias.length; i++) {
+  for (var j = 0; j < categorias[i].keywords.length; j++) {
+    if (lower.includes(categorias[i].keywords[j])) {
+      categoria = categorias[i].nombre;
+      break;
+    }
+  }
+  if (categoria !== 'Gasto General') break;
+}
+
+const descripcion = text.replace(/(\d[\d,\.]*)/g, '').replace(/pesos|mxn|\$/gi, '').trim();
+
+const ahora = new Date();
+const opts = { timeZone: 'America/Mexico_City' };
+const fecha = new Intl.DateTimeFormat('es-MX', Object.assign({}, opts, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })).format(ahora);
+const semana = 'Semana ' + Math.ceil(ahora.getDate() / 7) + '-' + (ahora.getMonth() + 1) + '-' + ahora.getFullYear();
+const mesRaw = new Intl.DateTimeFormat('es-MX', Object.assign({}, opts, { month: 'long', year: 'numeric' })).format(ahora);
+const mes = mesRaw.charAt(0).toUpperCase() + mesRaw.slice(1);
+
+const inp = $input.first().json;
+return [{ json: {
+  text: inp.text, chatId: inp.chatId, username: inp.username, intent: inp.intent,
+  monto: monto, categoria: categoria,
+  descripcion: descripcion || text,
+  fecha: fecha, semana: semana, mes: mes, rawText: text
+} }];
