@@ -1,0 +1,117 @@
+const msg      = $input.first().json.message;
+const text     = (msg && msg.text ? msg.text : '').trim();
+const chatId   = msg && msg.chat   ? msg.chat.id   : null;
+const username = (msg && msg.from)
+  ? (msg.from.username || msg.from.first_name || 'usuario')
+  : 'usuario';
+const lower    = text.toLowerCase();
+
+const CATEGORIAS_VALIDAS = [
+  'Tarjeta AMEX', 'Tarjeta VISA', 'Tarjeta Mastercard',
+  'Efectivo', 'Transferencia', 'Debito',
+  'Comida', 'Transporte', 'Supermercado',
+  'Entretenimiento', 'Gasto General'
+];
+
+let intent = 'AGREGAR';
+
+if (lower.includes('consultar') || lower.includes('ver gastos') ||
+    lower.includes('mis gastos') || lower.includes('resumen') ||
+    lower.includes('total')) {
+  intent = 'CONSULTAR';
+} else if (lower.includes('nueva categoria') || lower.includes('nueva categoría') ||
+           lower.includes('agregar categoria') || lower.includes('agregar categoría') ||
+           lower.includes('crear categoria') || lower.includes('crear categoría')) {
+  intent = 'NUEVA_CATEGORIA';
+} else if (lower === '/start' || lower === 'ayuda' || lower === '/help') {
+  intent = 'AYUDA';
+} else if (lower.includes('reporte semanal') || lower.includes('reporte mensual')) {
+  intent = 'REPORTE';
+}
+
+let tipo      = null;
+let nombre    = null;
+let cantidad  = null;
+let categoria = null;
+let categoriaValida = true;
+let infoCompleta    = false;
+let mensajeError    = null;
+
+if (intent === 'AGREGAR') {
+
+  if      (lower.startsWith('ingreso')) tipo = 'ingreso';
+  else if (lower.startsWith('egreso'))  tipo = 'egreso';
+
+  const montoMatch = text.match(/([\d,\.]+)/g);
+  if (montoMatch) {
+    cantidad = parseFloat(montoMatch[0].replace(/,/g, ''));
+  }
+
+  const mapKeywords = {
+    'Tarjeta AMEX':       ['amex', 'american express'],
+    'Tarjeta VISA':       ['visa'],
+    'Tarjeta Mastercard': ['mastercard', 'master'],
+    'Efectivo':           ['efectivo', 'cash'],
+    'Transferencia':      ['transferencia', 'spei'],
+    'Debito':             ['debito'],
+    'Comida':             ['comida', 'restaurante', 'cena', 'desayuno', 'lunch'],
+    'Transporte':         ['uber', 'didi', 'taxi', 'metro', 'gasolina'],
+    'Supermercado':       ['super', 'walmart', 'soriana', 'chedraui', 'mercado'],
+    'Entretenimiento':    ['netflix', 'spotify', 'cine'],
+    'Gasto General':      ['general', 'varios', 'otro']
+  };
+
+  for (const [cat, kws] of Object.entries(mapKeywords)) {
+    if (kws.some(function(kw) { return lower.includes(kw); })) {
+      categoria = cat;
+      break;
+    }
+  }
+
+  let nombreLimpio = text
+    .replace(/^(egreso|ingreso)\s*/i, '')
+    .replace(/([\d,\.]+)/g, '')
+    .replace(/pesos|mxn|\$/gi, '');
+
+  if (categoria) {
+    const allKws = Object.values(mapKeywords).flat();
+    allKws.forEach(function(kw) {
+      nombreLimpio = nombreLimpio.replace(new RegExp(kw, 'gi'), '');
+    });
+  }
+  nombre = nombreLimpio.replace(/\s+/g, ' ').trim() || null;
+
+  if (categoria && !CATEGORIAS_VALIDAS.includes(categoria)) {
+    categoriaValida = false;
+  }
+
+  const faltantes = [];
+  if (!tipo)     faltantes.push('tipo (escribe egreso o ingreso al inicio)');
+  if (!cantidad) faltantes.push('cantidad (ej: 350)');
+  if (!nombre)   faltantes.push('nombre del gasto (ej: renta, pizza, gasolina)');
+  if (!categoria) faltantes.push('categoría (ej: efectivo, visa, comida)');
+
+  if (faltantes.length === 0 && categoriaValida) {
+    infoCompleta = true;
+  } else if (!categoriaValida) {
+    mensajeError = 'CATEGORIA_NO_EXISTE';
+  } else {
+    mensajeError = ' Información incompleta. Me falta:\n'
+      + faltantes.map(function(f) { return '• ' + f; }).join('\n')
+      + '\n\nEscribe ayuda para ver el formato correcto.';
+  }
+}
+
+return [{ json: {
+  text:            text,
+  chatId:          chatId,
+  username:        username,
+  intent:          intent,
+  tipo:            tipo,
+  nombre:          nombre,
+  cantidad:        cantidad,
+  categoria:       categoria,
+  categoriaValida: categoriaValida,
+  infoCompleta:    infoCompleta,
+  mensajeError:    mensajeError
+} }];
