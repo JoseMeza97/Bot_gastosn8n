@@ -1,0 +1,31 @@
+const items = $input.all();
+const chatId = $('Detectar Intencion').first().json.chatId;
+
+const resumen = {};
+let total = 0;
+
+for (var i = 0; i < items.length; i++) {
+  var row = items[i].json;
+  if (!row.Categoria || !row.Monto) continue;
+  var monto = parseFloat(row.Monto) || 0;
+  if (!resumen[row.Categoria]) resumen[row.Categoria] = 0;
+  resumen[row.Categoria] += monto;
+  total += monto;
+}
+
+const emojis = {
+  'Tarjeta AMEX': '💳', 'Tarjeta VISA': '💳', 'Tarjeta Mastercard': '💳',
+  'Efectivo': '💵', 'Transferencia': '📲', 'Debito': '🏦',
+  'Comida': '🍽️', 'Transporte': '🚗', 'Supermercado': '🛒',
+  'Entretenimiento': '🎬', 'Gasto General': '📦'
+};
+
+const entries = Object.entries(resumen).sort(function(a, b) { return b[1] - a[1]; });
+let msg = '📊 *Resumen de gastos:*\n\n';
+for (var k = 0; k < entries.length; k++) {
+  var e = emojis[entries[k][0]] || '📌';
+  msg += e + ' *' + entries[k][0] + '*: $' + entries[k][1].toLocaleString('es-MX', { minimumFractionDigits: 2 }) + ' MXN\n';
+}
+msg += '\n💳 *TOTAL: $' + total.toLocaleString('es-MX', { minimumFractionDigits: 2 }) + ' MXN*';
+
+return [{ json: { chatId: chatId, resumenTexto: msg } }];
